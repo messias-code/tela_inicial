@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Draco Workstation</title>
+  <meta name="description" content="Draco Workstation — ferramentas de intrusão sob a constelação do dragão. Comece pelo Draco Scanner." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Jacquard+24&family=Pirata+One&family=VT323&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <canvas id="scene" aria-hidden="true"></canvas>
+
+  <div id="torch" aria-hidden="true"></div>
+  <div id="vignette" aria-hidden="true"></div>
+  <div id="grain" aria-hidden="true"></div>
+  <div id="frame" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+
+  <!-- ===================== TELA-TÍTULO ===================== -->
+  <section id="title">
+    <div class="title-inner">
+      <h1 class="logo" data-text="Draco">
+        <span class="logo-main" data-text="Draco">Draco</span>
+        <span class="logo-sub">W&#8202;O&#8202;R&#8202;K&#8202;S&#8202;T&#8202;A&#8202;T&#8202;I&#8202;O&#8202;N</span>
+      </h1>
+      <p class="tagline">A serpente que nunca se põe.</p>
+      <p class="tagline tagline-dim">Sob o olhar dela, nenhuma porta fica no escuro.</p>
+
+      <p id="prompt" class="prompt">▚ clique para acender a constelação ▚</p>
+
+      <nav id="menu" class="menu" hidden aria-label="Menu principal">
+        <span class="menu-head">— trace a rota —</span>
+        <button class="menu-item" type="button" data-act="scan">
+          <span class="mi-name">Varrer alvo</span>
+          <span class="mi-desc">soltar o Draco Scanner sobre um host</span>
+        </button>
+        <button class="menu-item" type="button" data-act="ajuda">
+          <span class="mi-name">Grimório</span>
+          <span class="mi-desc">as cartas: como manejar as ferramentas</span>
+        </button>
+      </nav>
+    </div>
+  </section>
+
+  <!-- ===================== TELAS INTERNAS ===================== -->
+  <div id="app" hidden>
+    <header id="topbar">
+      <a class="brand" href="#/" data-link="#/" aria-label="Voltar ao portão">
+        <span class="brand-name">DRACO&#8202;·&#8202;WORKSTATION</span>
+      </a>
+      <nav class="topnav">
+        <a href="#scan" data-link="#scan" data-nav="scan">Varredura</a>
+        <a href="#ajuda" data-link="#ajuda" data-nav="ajuda">Grimório</a>
+        <a href="#/" data-link="#/" class="topnav-back">‹ portão</a>
+      </nav>
+    </header>
+
+    <main>
+      <!-- ---------- DRACO SCANNER ---------- -->
+      <section id="view-scan" class="view" hidden>
+        <p class="eyebrow">Ferramenta · I</p>
+        <h2 class="view-title" data-text="Draco Scanner">Draco Scanner</h2>
+        <p class="view-sub">Aponte um alvo. O dragão fareja hosts e portas com <code>nmap</code> e traz de volta o que encontrar.</p>
+
+        <form id="scan-form" class="scan-grid">
+          <div class="field">
+            <label for="scan-target">Alvo</label>
+            <input id="scan-target" type="text" autocomplete="off" spellcheck="false"
+              placeholder="exemplo.com   ·   192.168.1.10   ·   10.0.0.0/24" />
+            <small>Domínio, IP ou faixa CIDR. Só aponte para o que você tem permissão de tocar.</small>
+          </div>
+
+          <div class="field">
+            <label for="scan-profile">Perfil de varredura</label>
+            <select id="scan-profile">
+              <option value="rapida">Rápida — portas comuns (-T4 -F)</option>
+              <option value="padrao" selected>Padrão — versões de serviço (-sV -T4)</option>
+              <option value="completa">Completa — todas as portas + SO (-p- -sV -O)</option>
+              <option value="ping">Rastreio — só descobrir hosts (-sn)</option>
+              <option value="custom">Personalizada</option>
+            </select>
+          </div>
+
+          <div class="field" id="scan-custom-wrap">
+            <label for="scan-custom">Flags personalizadas</label>
+            <input id="scan-custom" type="text" autocomplete="off" spellcheck="false"
+              placeholder="-sS -p 1-1000 --script vuln" />
+          </div>
+
+          <fieldset class="field field-full">
+            <legend>Feitiços extras</legend>
+            <label class="check"><input type="checkbox" class="scan-opt" value="-sV" /> Detecção de versão (-sV)</label>
+            <label class="check"><input type="checkbox" class="scan-opt" value="-O" /> Detecção de SO (-O)</label>
+            <label class="check"><input type="checkbox" class="scan-opt" value="-sC" /> Scripts padrão (-sC)</label>
+            <label class="check"><input type="checkbox" class="scan-opt" value="-Pn" /> Não pingar antes (-Pn)</label>
+          </fieldset>
+
+          <div class="field field-full cmd-row">
+            <span class="cmd-label">Invocação</span>
+            <code id="scan-cmd" class="cmd">nmap</code>
+          </div>
+
+          <div class="field field-full actions">
+            <button class="btn btn-primary" type="submit">Soltar o dragão</button>
+            <a class="btn btn-ghost" href="#ajuda" data-link="#ajuda">Como ler os sinais?</a>
+          </div>
+        </form>
+
+        <pre id="scan-out" class="console" hidden></pre>
+      </section>
+
+      <!-- ---------- GRIMÓRIO ---------- -->
+      <section id="view-ajuda" class="view" hidden>
+        <p class="eyebrow">Cartas celestes</p>
+        <h2 class="view-title" data-text="Grimório">Grimório</h2>
+
+        <div class="docs">
+          <nav class="docs-nav">
+            <a href="#doc-luz">Primeira luz</a>
+            <a href="#doc-scanner">Draco Scanner</a>
+            <a href="#doc-perfis">Perfis de varredura</a>
+            <a href="#doc-sinais">Lendo os sinais</a>
+            <a href="#doc-regra">Regra de ouro</a>
+          </nav>
+
+          <article class="docs-body">
+            <h3 id="doc-luz">Primeira luz</h3>
+            <p>A Draco Workstation reúne ferramentas de segurança da informação numa interface visual, sob a constelação do dragão. Cada ferramenta monta o comando por baixo dos panos — você aponta o alvo e o objetivo, não decora sintaxe. Hoje há uma ferramenta acesa: o <b>Draco Scanner</b>.</p>
+
+            <h3 id="doc-scanner">Draco Scanner</h3>
+            <p>Uma camada visual sobre o <code>nmap</code>. O caminho:</p>
+            <ol>
+              <li><b>Alvo</b> — domínio, IP ou faixa CIDR (ex.: <code>10.0.0.0/24</code>).</li>
+              <li><b>Perfil</b> — um preset pronto ou "Personalizada" para digitar as flags à mão.</li>
+              <li><b>Feitiços extras</b> — marcações que somam flags ao comando.</li>
+              <li><b>Invocação</b> — a linha final, montada ao vivo enquanto você edita.</li>
+              <li><b>Soltar o dragão</b> — envia o comando ao motor de execução.</li>
+            </ol>
+            <p class="note">O motor de execução (backend) ainda não está conectado. A tela já monta e valida a invocação; a caçada real acende quando o serviço <code>draco-engine</code> estiver no ar.</p>
+
+            <h3 id="doc-perfis">Perfis de varredura</h3>
+            <table class="doc-table">
+              <thead><tr><th>Perfil</th><th>Flags</th><th>Quando usar</th></tr></thead>
+              <tbody>
+                <tr><td>Rápida</td><td><code>-T4 -F</code></td><td>Visão geral veloz das 100 portas mais comuns.</td></tr>
+                <tr><td>Padrão</td><td><code>-sV -T4</code></td><td>Portas comuns + identificação de serviço/versão.</td></tr>
+                <tr><td>Completa</td><td><code>-p- -sV -O</code></td><td>Todas as 65535 portas, versões e palpite de SO. Lenta.</td></tr>
+                <tr><td>Rastreio</td><td><code>-sn</code></td><td>Só descobrir quais hosts estão vivos na faixa.</td></tr>
+              </tbody>
+            </table>
+            <p>Úteis no modo personalizado: <code>-sS</code> (SYN scan), <code>-Pn</code> (pula descoberta), <code>-p 80,443</code> (portas específicas), <code>--script vuln</code> (scripts de vulnerabilidade), <code>-oN saida.txt</code> (salva em arquivo).</p>
+
+            <h3 id="doc-sinais">Lendo os sinais</h3>
+            <p>Cada porta volta com um estado:</p>
+            <ul>
+              <li><b>open</b> — há um serviço aceitando conexões. É o que interessa.</li>
+              <li><b>closed</b> — o host respondeu, mas nada escuta ali.</li>
+              <li><b>filtered</b> — um firewall bloqueou; o nmap não conseguiu decidir.</li>
+            </ul>
+            <p>Com <code>-sV</code>, a coluna de versão traz o software e a build detectados — o ponto de partida para pesquisar CVEs conhecidos.</p>
+
+            <h3 id="doc-regra">Regra de ouro</h3>
+            <p>Apontar o dragão para muralhas alheias sem permissão é crime na maioria dos reinos. Use o Draco Scanner apenas em: infraestrutura própria, laboratórios de teste, ambientes de CTF ou trabalhos com escopo e autorização por escrito. Os alvos que você digita são sua responsabilidade.</p>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <footer id="footer">
+      <span>Draco Workstation</span>
+      <span aria-hidden="true">·</span>
+      <span>α</span>
+      <span aria-hidden="true">·</span>
+      <a href="#ajuda" data-link="#ajuda">Grimório</a>
+    </footer>
+  </div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
