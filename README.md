@@ -1,9 +1,8 @@
 # Draco Workstation
 
-Ferramentas de segurança da informação numa interface visual, sob a constelação
-do dragão. Estética: pixel-gótico (tipo _Blasphemous_) + cosmos, cores da
-identidade Claude Code (preto + laranja/terracota). Primeira ferramenta:
-**Draco Scanner** (camada visual sobre o `nmap`).
+Plataforma de ferramentas de pentest e segurança (red team e blue team) com
+interface visual. Site estático, sem build. Identidade de cor: preto/grafite +
+terracota (Claude Code).
 
 ## Rodar
 
@@ -12,36 +11,36 @@ python3 -m http.server 4173
 # http://localhost:4173
 ```
 
-Node não é necessário para rodar (só foi instalado para lint). Os arquivos usam
-ES modules, então precisa de servidor HTTP — não abre por `file://`.
+Usa ES modules — precisa de servidor HTTP, não abre por `file://`.
 
 ## Estrutura
 
 | Arquivo | Papel |
 |---|---|
-| `index.html` | Tela-título + telas internas (Draco Scanner, Grimório) |
-| `css/style.css` | Tema, fontes pixel/blackletter, glitch, moldura, vinheta, grão |
-| `js/dragon.js` | A constelação Draco: estrelas + linhas da cabeça do dragão |
-| `js/scene.js` | Canvas: campo estelar, constelação em partículas, linhas, glitch |
-| `js/app.js` | Tela-título ↔ telas, menu de jogo (teclado/mouse), construtor do comando |
+| `index.html` | Início + ferramenta + Documentação, em uma página |
+| `css/style.css` | Tema e componentes (dark, Inter + JetBrains Mono) |
+| `js/app.js` | Roteamento por hash e construtor de comando da ferramenta |
+| `js/particles.js` | Fundo ambiente: partículas em movimento que reagem a mouse, clique e digitação |
 
-### Mexer no logo (dragão em estrelas)
+### Rotas
 
-Em `js/dragon.js`: a silhueta vem do `PATH` (ícone `spiked-dragon-head` do
-**game-icons.net**, por Lorc — CC BY 3.0). O `buildDraco()` rasteriza o path,
-amostra pontos no contorno + interior (a poeira) e monta as estrelas.
-`NODES_VB` = estrelas-âncora nas pontas dos espinhos; `EDGES_KEYS` = linhas de
-constelação. `step` controla o espaçamento dos pontos do contorno.
-Tamanho/posição por fase: `computeGoal()` em `js/scene.js`.
+`#/` início · `#/ferramentas` (rola até a seção) · `#/scanner` Draco Conhecendo
+o Alvo · `#/docs` documentação
 
-Créditos: ícone do dragão — game-icons.net (Lorc), CC BY 3.0.
+## Ferramenta atual: Draco Conhecendo o Alvo
 
-### Ajustar animação / glitch
+Camada visual sobre o `nmap`, em tela cheia (sem rolagem de página — só a saída
+e os campos rolam). Dois campos: **alvo** e **modo de varredura**:
 
-Em `js/scene.js`: `fireGlitch()` (força/duração), o agendamento em `glNext`,
-`computeGoal()` (tamanho e posição da constelação por fase), `breath` (respiração).
+| Modo | Flags |
+|---|---|
+| Furtivo · rápido | `-sS -Pn -T3` |
+| Furtivo · lento | `-sS -Pn -T1` |
+| Agressivo · rápido | `-A -T4` |
+| Agressivo · lento | `-A -T2` |
 
-## Próximo passo
+Monta e valida o comando ao vivo; a saída aparece ao lado. Alvo padrão:
+`scanme.nmap.org`.
 
-O Draco Scanner monta e valida a invocação, mas **não executa**. Falta o backend
-`draco-engine` que roda o `nmap` e transmite a saída para o console da tela.
+**Não executa** — falta o backend `draco-engine` que roda o `nmap` e transmite a
+saída ao painel. "Draco Engenharia Social" e "Relatórios" são espaços reservados.

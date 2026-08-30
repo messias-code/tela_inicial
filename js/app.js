@@ -1,215 +1,143 @@
-// app.js — tela-título <-> telas internas, menu de jogo (teclado + mouse),
-// roteamento por hash e o construtor de comando do Draco Scanner.
+// app.js — roteamento por hash + construtor de comando do Draco Scanner.
 
-import { createScene } from './scene.js';
+import { initParticles } from './particles.js';
 
-const scene = createScene(document.getElementById('scene'));
-scene.start();
+initParticles(document.getElementById('bg'));
 
-const title = document.getElementById('title');
-const app = document.getElementById('app');
-const menu = document.getElementById('menu');
-const prompt = document.getElementById('prompt');
-const logo = document.querySelector('.logo');
-const items = [...menu.querySelectorAll('.menu-item')];
+/* ============================ roteamento ============================ */
 
-const ROUTES = { '#scan': 'scan', '#ajuda': 'ajuda' };
-let sel = 0;
-let awake = false;
-let state = 'intro';
+const VIEWS = ['home', 'scanner', 'docs'];
+const VIEW_BY_HASH = {
+  '': 'home',
+  '#/': 'home',
+  '#/ferramentas': 'home',
+  '#/scanner': 'scanner',
+  '#/docs': 'docs',
+};
+const NAV_BY_HASH = {
+  '': 'home',
+  '#/': 'home',
+  '#/ferramentas': 'ferramentas',
+  '#/scanner': 'ferramentas',
+  '#/docs': 'docs',
+};
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-function setSel(i) {
-  sel = (i + items.length) % items.length;
-  items.forEach((el, n) => el.classList.toggle('is-sel', n === sel));
-}
+function render() {
+  const hash = location.hash;
+  const view = VIEW_BY_HASH[hash] || 'home';
+  const nav = NAV_BY_HASH[hash] || 'home';
 
-function glitchLogo() {
-  logo.classList.remove('glitch');
-  void logo.offsetWidth;
-  logo.classList.add('glitch');
-}
-
-function awaken() {
-  if (awake) return;
-  awake = true;
-  state = 'menu';
-  prompt.hidden = true;
-  menu.hidden = false;
-  requestAnimationFrame(() => menu.classList.add('show'));
-  scene.setPhase('menu');
-  scene.awaken();
-  glitchLogo();
-  setSel(0);
-}
-
-function showTitle() {
-  state = 'menu';
-  awake = true;
-  app.hidden = true;
-  app.classList.remove('show');
-  title.hidden = false;
-  prompt.hidden = true;
-  menu.hidden = false;
-  menu.classList.add('show');
-  scene.setPhase('menu');
-  setSel(sel);
-}
-
-function showView(name) {
-  state = name;
-  title.hidden = true;
-  app.hidden = false;
-  requestAnimationFrame(() => app.classList.add('show'));
-  for (const v of ['scan', 'ajuda']) {
-    document.getElementById('view-' + v).hidden = v !== name;
+  for (const v of VIEWS) {
+    document.querySelector(`[data-view="${v}"]`).hidden = v !== view;
   }
-  document.querySelectorAll('[data-nav]').forEach((el) =>
-    el.classList.toggle('is-active', el.dataset.nav === name),
-  );
-  scene.setPhase('sub');
-  window.scrollTo(0, 0);
-}
+  document.body.classList.toggle('view-scanner', view === 'scanner');
+  document.querySelectorAll('.site-nav a').forEach((a) => {
+    if (a.dataset.nav === nav) a.setAttribute('aria-current', 'page');
+    else a.removeAttribute('aria-current');
+  });
+  document.title =
+    view === 'home'
+      ? 'Draco Workstation'
+      : `${view === 'scanner' ? 'Draco Conhecendo o Alvo' : 'Documentação'} — Draco Workstation`;
 
-function route() {
-  const r = ROUTES[location.hash];
-  if (r) {
-    awake = true;
-    scene.flare();
-    showView(r);
+  if (hash === '#/ferramentas') {
+    scrollToTools();
+    // o layout ainda pode mudar (fontes, imagens); reposiciona algumas vezes
+    requestAnimationFrame(scrollToTools);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(scrollToTools);
+    setTimeout(scrollToTools, 250);
+    setTimeout(scrollToTools, 700);
   } else {
-    showTitle();
+    window.scrollTo(0, 0);
   }
 }
 
-function activate(n) {
-  setSel(n);
-  scene.flare();
-  glitchLogo();
-  const act = items[sel].dataset.act;
-  setTimeout(() => {
-    location.hash = act === 'scan' ? '#scan' : '#ajuda';
-  }, 170);
-}
-
-// ---- interações da tela-título ----
-title.addEventListener('click', (e) => {
-  if (!awake) {
-    awaken();
-    return;
-  }
-  const it = e.target.closest('.menu-item');
-  if (it) activate(items.indexOf(it));
-});
-
-window.addEventListener('keydown', (e) => {
-  if (!awake) {
-    if (['Enter', ' ', 'ArrowDown', 'ArrowUp'].includes(e.key)) {
-      e.preventDefault();
-      awaken();
-    }
-    return;
-  }
-  if (state !== 'menu') return;
-  if (e.key === 'ArrowDown') {
-    e.preventDefault();
-    setSel(sel + 1);
-  } else if (e.key === 'ArrowUp') {
-    e.preventDefault();
-    setSel(sel - 1);
-  } else if (e.key === 'Enter' || e.key === ' ') {
-    e.preventDefault();
-    activate(sel);
-  }
-});
-
-items.forEach((el, n) => {
-  el.addEventListener('mouseenter', () => {
-    if (state === 'menu') setSel(n);
+function scrollToTools() {
+  document.getElementById('ferramentas')?.scrollIntoView({
+    block: 'start',
+    behavior: reduceMotion ? 'auto' : 'smooth',
   });
-});
-
-// ---- links internos ----
-document.querySelectorAll('[data-link]').forEach((el) => {
-  el.addEventListener('click', (e) => {
-    e.preventDefault();
-    const h = el.dataset.link;
-    location.hash = h === '#/' ? '' : h;
-  });
-});
-
-window.addEventListener('hashchange', route);
-
-// ---- glitch periódico do logo enquanto a tela-título está visível ----
-setInterval(() => {
-  if (!title.hidden && Math.random() < 0.6) glitchLogo();
-}, 5200);
-
-// ---- boot ----
-if (location.hash && ROUTES[location.hash]) {
-  awake = true;
-  scene.skipIntro();
-  title.hidden = true;
-  app.hidden = false;
-  app.classList.add('show');
-  showView(ROUTES[location.hash]);
 }
 
-/* ================= Draco Scanner ================= */
+window.addEventListener('hashchange', render);
 
-const PROFILES = {
-  rapida: '-T4 -F',
-  padrao: '-sV -T4',
-  completa: '-p- -sV -O -T4',
-  ping: '-sn',
-  custom: '',
+// clicar "Ferramentas" já estando na seção: rola de novo (hashchange não dispara)
+document.querySelector('[data-nav="ferramentas"]')?.addEventListener('click', () => {
+  if (location.hash === '#/ferramentas') scrollToTools();
+});
+
+render();
+
+/* ================= Draco Conhecendo o Alvo ================= */
+
+const MODES = {
+  'furtivo-rapido': '-sS -Pn -T3',
+  'furtivo-lento': '-sS -Pn -T1',
+  'agressivo-rapido': '-A -T4',
+  'agressivo-lento': '-A -T2',
 };
 
-const Sc = {
-  target: document.getElementById('scan-target'),
-  profile: document.getElementById('scan-profile'),
-  custom: document.getElementById('scan-custom'),
-  customWrap: document.getElementById('scan-custom-wrap'),
-  opts: [...document.querySelectorAll('.scan-opt')],
-  cmd: document.getElementById('scan-cmd'),
+const MODE_HINTS = {
+  'furtivo-rapido':
+    'SYN scan discreto, sem descoberta prévia de host, em ritmo -T3. Equilíbrio entre discrição e tempo. Requer privilégios de root.',
+  'furtivo-lento':
+    'SYN scan em ritmo -T1: sondas espaçadas para escapar de limites de taxa e IDS por rajada. Bem lento. Requer root.',
+  'agressivo-rapido':
+    'Versão, SO, scripts padrão e traceroute (-A) em ritmo -T4. Completo, porém ruidoso e fácil de detectar.',
+  'agressivo-lento':
+    'A profundidade do -A em ritmo -T2 — resultados mais confiáveis em redes filtradas ou instáveis.',
+};
+
+const el = {
   form: document.getElementById('scan-form'),
-  out: document.getElementById('scan-out'),
+  target: document.getElementById('scan-target'),
+  modes: [...document.querySelectorAll('input[name="scan-mode"]')],
+  modeHint: document.getElementById('scan-mode-hint'),
+  command: document.getElementById('scan-command'),
+  copy: document.getElementById('scan-copy'),
+  output: document.getElementById('scan-output'),
 };
 
-function buildCmd() {
-  const target = (Sc.target.value || 'alvo').trim().split(/\s+/)[0] || 'alvo';
-  const parts = [];
-  if (Sc.profile.value === 'custom') parts.push(Sc.custom.value.trim());
-  else parts.push(PROFILES[Sc.profile.value] || '');
-  for (const o of Sc.opts) if (o.checked) parts.push(o.value);
-  const line = `nmap ${parts.filter(Boolean).join(' ')} ${target}`
-    .replace(/\s+/g, ' ')
-    .trim();
-  Sc.cmd.textContent = line;
+function currentMode() {
+  return el.modes.find((r) => r.checked)?.value || 'furtivo-rapido';
+}
+
+function buildCommand() {
+  const target = (el.target.value || '').trim().split(/\s+/)[0] || '<alvo>';
+  const line = `nmap ${MODES[currentMode()]} ${target}`.replace(/\s+/g, ' ').trim();
+  el.command.textContent = line;
+  el.modeHint.textContent = MODE_HINTS[currentMode()] || '';
   return line;
 }
 
-Sc.customWrap.hidden = true;
-Sc.profile.addEventListener('change', () => {
-  Sc.customWrap.hidden = Sc.profile.value !== 'custom';
-  buildCmd();
-});
-[Sc.target, Sc.custom, ...Sc.opts].forEach((el) =>
-  el.addEventListener('input', buildCmd),
-);
-buildCmd();
+el.modes.forEach((r) => r.addEventListener('change', buildCommand));
+el.target.addEventListener('input', buildCommand);
+buildCommand();
 
-Sc.form.addEventListener('submit', (e) => {
+el.copy.addEventListener('click', async () => {
+  try {
+    await navigator.clipboard.writeText(el.command.textContent);
+    const label = el.copy.textContent;
+    el.copy.textContent = 'Copiado';
+    el.copy.disabled = true;
+    setTimeout(() => {
+      el.copy.textContent = label;
+      el.copy.disabled = false;
+    }, 1400);
+  } catch {
+    /* clipboard indisponível — ignora */
+  }
+});
+
+el.form.addEventListener('submit', (e) => {
   e.preventDefault();
-  const line = buildCmd();
+  const line = buildCommand();
   const now = new Date().toLocaleTimeString('pt-BR');
-  scene.flare();
-  Sc.out.hidden = false;
-  Sc.out.textContent =
-    `[${now}] invocacao preparada\n` +
-    `$ ${line}\n\n` +
-    `[sistema] o dragao ainda dorme entre as estrelas.\n` +
-    `          o motor de varredura (draco-engine) nao esta conectado.\n` +
-    `          suba o servico em http://localhost:8787 para cacar de verdade\n` +
-    `          e transmitir a saida aqui em tempo real.\n`;
-  Sc.out.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  el.output.textContent =
+    `[${now}] Comando preparado\n` +
+    `  ${line}\n\n` +
+    `O motor de execução (draco-engine) não está conectado nesta versão.\n` +
+    `Conecte o serviço backend para executar a varredura e receber os\n` +
+    `resultados em tempo real neste painel.`;
 });
