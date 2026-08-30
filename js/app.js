@@ -92,7 +92,8 @@ const MODE_HINTS = {
 const el = {
   form: document.getElementById('scan-form'),
   target: document.getElementById('scan-target'),
-  modes: [...document.querySelectorAll('input[name="scan-mode"]')],
+  profile: [...document.querySelectorAll('input[name="scan-profile"]')],
+  pace: [...document.querySelectorAll('input[name="scan-pace"]')],
   modeHint: document.getElementById('scan-mode-hint'),
   command: document.getElementById('scan-command'),
   copy: document.getElementById('scan-copy'),
@@ -100,7 +101,9 @@ const el = {
 };
 
 function currentMode() {
-  return el.modes.find((r) => r.checked)?.value || 'furtivo-rapido';
+  const profile = el.profile.find((r) => r.checked)?.value || 'furtivo';
+  const pace = el.pace.find((r) => r.checked)?.value || 'rapido';
+  return `${profile}-${pace}`;
 }
 
 function buildCommand() {
@@ -111,7 +114,7 @@ function buildCommand() {
   return line;
 }
 
-el.modes.forEach((r) => r.addEventListener('change', buildCommand));
+[...el.profile, ...el.pace].forEach((r) => r.addEventListener('change', buildCommand));
 el.target.addEventListener('input', buildCommand);
 buildCommand();
 
@@ -130,14 +133,84 @@ el.copy.addEventListener('click', async () => {
   }
 });
 
-el.form.addEventListener('submit', (e) => {
+/* -------- motor de execução (draco-engine) -------- */
+
+const notice = document.querySelector('.scan-top .notice');
+const runBtn = el.form.querySelector('button[type="submit"]');
+const runLabel = runBtn.textContent;
+let engineOnline = false;
+let scanning = false;
+let abort = null;
+
+async function checkEngine() {
+  try {
+    const r = await fetch('/api/health', { cache: 'no-store' });
+    const info = await r.json();
+    engineOnline = info.ok === true;
+    if (engineOnline && !info.nmap) {
+      notice.innerHTML =
+        '<strong>nmap não encontrado</strong> — o motor está no ar, mas falta o binário. Instale com <code>sudo apt install nmap</code>.';
+    } else if (engineOnline) {
+      notice.innerHTML =
+        '<strong>Motor conectado</strong> — a varredura roda no <code>draco-engine</code>' +
+        (info.root ? '.' : ' sem root: modos furtivos usam <code>-sT</code> em vez de <code>-sS</code>.');
+    }
+  } catch {
+    engineOnline = false;
+  }
+}
+checkEngine();
+
+el.form.addEventListener('submit', async (e) => {
   e.preventDefault();
   const line = buildCommand();
   const now = new Date().toLocaleTimeString('pt-BR');
-  el.output.textContent =
-    `[${now}] Comando preparado\n` +
-    `  ${line}\n\n` +
-    `O motor de execução (draco-engine) não está conectado nesta versão.\n` +
-    `Conecte o serviço backend para executar a varredura e receber os\n` +
-    `resultados em tempo real neste painel.`;
+
+  if (scanning) {
+    abort?.abort();
+    return;
+  }
+  if (!engineOnline) {
+    el.output.textContent =
+      `[${now}] Comando preparado\n  ${line}\n\n` +
+      `O motor de execução (draco-engine) não está no ar.\n` +
+      `Inicie com:  python3 draco-engine.py\n` +
+      `Para SYN scan (-sS):  sudo python3 draco-engine.py`;
+    return;
+  }
+
+  scanning = true;
+  abort = new AbortController();
+  runBtn.textContent = 'Interromper';
+  el.output.textContent = `[${now}] Iniciando varredura…\n\n`;
+
+  try {
+    const res = await fetch('/api/scan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ target: el.target.value, mode: currentMode() }),
+      signal: abort.signal,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      el.output.textContent += `\n[erro ${res.status}] ${err.error || 'falha na varredura'}\n`;
+      return;
+    }
+    const reader = res.body.getReader();
+    const dec = new TextDecoder();
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      el.output.textContent += dec.decode(value, { stream: true });
+      el.output.scrollTop = el.output.scrollHeight;
+    }
+  } catch (err) {
+    if (err.name === 'AbortError') el.output.textContent += '\n[varredura interrompida]\n';
+    else el.output.textContent += `\n[erro] ${err.message}\n`;
+  } finally {
+    scanning = false;
+    abort = null;
+    runBtn.textContent = runLabel;
+    el.output.scrollTop = el.output.scrollHeight;
+  }
 });

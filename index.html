@@ -99,7 +99,7 @@
           <h1>Draco Conhecendo o Alvo</h1>
           <p class="scan-sub">Reconhecimento de hosts, portas e serviços sobre o <code>nmap</code>.</p>
           <div class="notice" role="status">
-            <strong>Motor de execução não conectado</strong> — o comando é montado e validado aqui; a execução depende do backend <code>draco-engine</code>.
+            <strong>Verificando o motor…</strong> — a execução roda no backend <code>draco-engine</code> (<code>python3 draco-engine.py</code>).
           </div>
         </div>
 
@@ -116,39 +116,33 @@
 
             <fieldset class="field">
               <legend>Modo de varredura</legend>
-              <div class="mode-grid" role="radiogroup" aria-label="Modo de varredura">
-                <label class="mode">
-                  <input type="radio" name="scan-mode" value="furtivo-rapido" checked />
-                  <span class="mode-radio" aria-hidden="true"></span>
-                  <span class="mode-body">
-                    <span class="mode-title">Furtivo · rápido</span>
-                    <span class="mode-flags">-sS -Pn -T3</span>
-                  </span>
-                </label>
-                <label class="mode">
-                  <input type="radio" name="scan-mode" value="furtivo-lento" />
-                  <span class="mode-radio" aria-hidden="true"></span>
-                  <span class="mode-body">
-                    <span class="mode-title">Furtivo · lento</span>
-                    <span class="mode-flags">-sS -Pn -T1</span>
-                  </span>
-                </label>
-                <label class="mode">
-                  <input type="radio" name="scan-mode" value="agressivo-rapido" />
-                  <span class="mode-radio" aria-hidden="true"></span>
-                  <span class="mode-body">
-                    <span class="mode-title">Agressivo · rápido</span>
-                    <span class="mode-flags">-A -T4</span>
-                  </span>
-                </label>
-                <label class="mode">
-                  <input type="radio" name="scan-mode" value="agressivo-lento" />
-                  <span class="mode-radio" aria-hidden="true"></span>
-                  <span class="mode-body">
-                    <span class="mode-title">Agressivo · lento</span>
-                    <span class="mode-flags">-A -T2</span>
-                  </span>
-                </label>
+              <div class="seg-rows">
+                <div class="seg-row">
+                  <span class="seg-label">Perfil</span>
+                  <div class="seg" role="radiogroup" aria-label="Perfil">
+                    <label class="seg-opt">
+                      <input type="radio" name="scan-profile" value="furtivo" checked />
+                      <span>Furtivo</span>
+                    </label>
+                    <label class="seg-opt">
+                      <input type="radio" name="scan-profile" value="agressivo" />
+                      <span>Agressivo</span>
+                    </label>
+                  </div>
+                </div>
+                <div class="seg-row">
+                  <span class="seg-label">Ritmo</span>
+                  <div class="seg" role="radiogroup" aria-label="Ritmo">
+                    <label class="seg-opt">
+                      <input type="radio" name="scan-pace" value="rapido" checked />
+                      <span>Rápido</span>
+                    </label>
+                    <label class="seg-opt">
+                      <input type="radio" name="scan-pace" value="lento" />
+                      <span>Lento</span>
+                    </label>
+                  </div>
+                </div>
               </div>
               <p class="field-hint" id="scan-mode-hint"></p>
             </fieldset>

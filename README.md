@@ -7,11 +7,14 @@ terracota (Claude Code).
 ## Rodar
 
 ```bash
-python3 -m http.server 4173
+python3 draco-engine.py           # pede a senha do sudo e sobe como root em :4173
+python3 draco-engine.py --no-root # sem elevar (modos furtivos caem p/ -sT)
 # http://localhost:4173
 ```
 
-Usa ES modules — precisa de servidor HTTP, não abre por `file://`.
+O motor se eleva a root por padrão — o `nmap` precisa disso para SYN scan
+(`-sS`), detecção de SO e traceroute. Sem o `nmap`: `sudo apt install nmap`.
+Usa ES modules — não abre por `file://`.
 
 ## Estrutura
 
@@ -19,8 +22,9 @@ Usa ES modules — precisa de servidor HTTP, não abre por `file://`.
 |---|---|
 | `index.html` | Início + ferramenta + Documentação, em uma página |
 | `css/style.css` | Tema e componentes (dark, Inter + JetBrains Mono) |
-| `js/app.js` | Roteamento por hash e construtor de comando da ferramenta |
+| `js/app.js` | Roteamento por hash, construtor de comando e streaming da saída |
 | `js/particles.js` | Fundo ambiente: partículas em movimento que reagem a mouse, clique e digitação |
+| `draco-engine.py` | Backend (stdlib): serve os estáticos e roda o `nmap` em `/api/scan`, transmitindo a saída |
 
 ### Rotas
 
@@ -42,5 +46,6 @@ e os campos rolam). Dois campos: **alvo** e **modo de varredura**:
 Monta e valida o comando ao vivo; a saída aparece ao lado. Alvo padrão:
 `scanme.nmap.org`.
 
-**Não executa** — falta o backend `draco-engine` que roda o `nmap` e transmite a
-saída ao painel. "Draco Engenharia Social" e "Relatórios" são espaços reservados.
+Executa via `draco-engine.py`: o painel faz `POST /api/scan`, o motor roda o
+`nmap` e transmite a saída linha a linha. Sem root, `-sS` cai para `-sT` (connect
+scan). "Draco Engenharia Social" e "Relatórios" são espaços reservados.
