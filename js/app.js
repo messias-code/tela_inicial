@@ -69,24 +69,17 @@ document.querySelector('[data-nav="ferramentas"]')?.addEventListener('click', ()
 
 render();
 
-/* ================= Draco Conhecendo o Alvo ================= */
+/* ======================= Draco Scanner ======================= */
 
-const MODES = {
-  'furtivo-rapido': '-sS -Pn -T3',
-  'furtivo-lento': '-sS -Pn -T1',
-  'agressivo-rapido': '-A -T4',
-  'agressivo-lento': '-A -T2',
+const PROFILE_HINTS = {
+  furtivo:
+    'Furtivo: SYN scan, sem descoberta de host, versão leve e só scripts NSE seguros. Sem SO, sem UDP, sem nikto/gobuster — menor pegada.',
+  agressivo:
+    'Agressivo: varredura completa (-p-), SO, UDP, NSE discovery+vuln e a cadeia externa (nikto, gobuster, sslscan, nxc, vulners). Ruidoso e completo.',
 };
-
-const MODE_HINTS = {
-  'furtivo-rapido':
-    'SYN scan discreto, sem descoberta prévia de host, em ritmo -T3. Equilíbrio entre discrição e tempo. Requer privilégios de root.',
-  'furtivo-lento':
-    'SYN scan em ritmo -T1: sondas espaçadas para escapar de limites de taxa e IDS por rajada. Bem lento. Requer root.',
-  'agressivo-rapido':
-    'Versão, SO, scripts padrão e traceroute (-A) em ritmo -T4. Completo, porém ruidoso e fácil de detectar.',
-  'agressivo-lento':
-    'A profundidade do -A em ritmo -T2 — resultados mais confiáveis em redes filtradas ou instáveis.',
+const PACE_HINTS = {
+  rapido: 'Ritmo rápido: -T3/-T4, wordlist curta, limites de tempo menores.',
+  lento: 'Ritmo lento: -T1/-T2, fragmentação no furtivo, wordlist grande, mais confiável em redes filtradas.',
 };
 
 const el = {
@@ -95,32 +88,55 @@ const el = {
   profile: [...document.querySelectorAll('input[name="scan-profile"]')],
   pace: [...document.querySelectorAll('input[name="scan-pace"]')],
   modeHint: document.getElementById('scan-mode-hint'),
-  command: document.getElementById('scan-command'),
+  plan: document.getElementById('scan-plan'),
   copy: document.getElementById('scan-copy'),
   output: document.getElementById('scan-output'),
 };
 
-function currentMode() {
-  const profile = el.profile.find((r) => r.checked)?.value || 'furtivo';
-  const pace = el.pace.find((r) => r.checked)?.value || 'rapido';
-  return `${profile}-${pace}`;
+const currentProfile = () => el.profile.find((r) => r.checked)?.value || 'furtivo';
+const currentPace = () => el.pace.find((r) => r.checked)?.value || 'rapido';
+const currentTarget = () => (el.target.value || '').trim().split(/\s+/)[0] || 'scanme.nmap.org';
+
+let planSteps = [];
+
+async function renderPlan() {
+  const profile = currentProfile();
+  const pace = currentPace();
+  el.modeHint.textContent = `${PROFILE_HINTS[profile]} ${PACE_HINTS[pace]}`;
+
+  const q = new URLSearchParams({ profile, pace, target: currentTarget() });
+  try {
+    const r = await fetch(`/api/plan?${q}`, { cache: 'no-store' });
+    if (!r.ok) throw new Error();
+    planSteps = (await r.json()).steps || [];
+  } catch {
+    el.plan.innerHTML = '<li>motor fora do ar — inicie <code>python3 draco-engine.py</code></li>';
+    planSteps = [];
+    return;
+  }
+  el.plan.innerHTML = planSteps
+    .map((s) => `<li><b>${escapeHtml(s.title)}</b><br><span>${escapeHtml(s.detail)}</span></li>`)
+    .join('');
 }
 
-function buildCommand() {
-  const target = (el.target.value || '').trim().split(/\s+/)[0] || '<alvo>';
-  const line = `nmap ${MODES[currentMode()]} ${target}`.replace(/\s+/g, ' ').trim();
-  el.command.textContent = line;
-  el.modeHint.textContent = MODE_HINTS[currentMode()] || '';
-  return line;
+function escapeHtml(s) {
+  return s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 }
 
-[...el.profile, ...el.pace].forEach((r) => r.addEventListener('change', buildCommand));
-el.target.addEventListener('input', buildCommand);
-buildCommand();
+let planTimer;
+[...el.profile, ...el.pace].forEach((r) => r.addEventListener('change', renderPlan));
+el.target.addEventListener('input', () => {
+  clearTimeout(planTimer);
+  planTimer = setTimeout(renderPlan, 350);
+});
+renderPlan();
 
 el.copy.addEventListener('click', async () => {
+  const text =
+    `Draco Scanner — ${currentProfile()} · ${currentPace()} — alvo ${currentTarget()}\n\n` +
+    planSteps.map((s) => `${s.n}. ${s.title}\n   ${s.detail}`).join('\n');
   try {
-    await navigator.clipboard.writeText(el.command.textContent);
+    await navigator.clipboard.writeText(text);
     const label = el.copy.textContent;
     el.copy.textContent = 'Copiado';
     el.copy.disabled = true;
@@ -147,14 +163,21 @@ async function checkEngine() {
     const r = await fetch('/api/health', { cache: 'no-store' });
     const info = await r.json();
     engineOnline = info.ok === true;
-    if (engineOnline && !info.nmap) {
+    if (!engineOnline) return;
+
+    if (!info.nmap) {
       notice.innerHTML =
-        '<strong>nmap não encontrado</strong> — o motor está no ar, mas falta o binário. Instale com <code>sudo apt install nmap</code>.';
-    } else if (engineOnline) {
-      notice.innerHTML =
-        '<strong>Motor conectado</strong> — a varredura roda no <code>draco-engine</code>' +
-        (info.root ? '.' : ' sem root: modos furtivos usam <code>-sT</code> em vez de <code>-sS</code>.');
+        '<strong>nmap não encontrado</strong> — o motor está no ar, mas falta o binário: <code>apt install nmap</code>.';
+      return;
     }
+    const missing = Object.entries(info.tools || {})
+      .filter(([, ok]) => !ok)
+      .map(([t]) => t);
+    let msg =
+      '<strong>Motor conectado</strong> — pipeline no <code>draco-engine</code>' +
+      (info.root ? ' (root).' : ', <em>sem root</em>: SYN scan cai para <code>-sT</code> e sem <code>-O</code>.');
+    if (missing.length) msg += ` Ferramentas ausentes: <code>${missing.join(', ')}</code>.`;
+    notice.innerHTML = msg;
   } catch {
     engineOnline = false;
   }
@@ -163,7 +186,6 @@ checkEngine();
 
 el.form.addEventListener('submit', async (e) => {
   e.preventDefault();
-  const line = buildCommand();
   const now = new Date().toLocaleTimeString('pt-BR');
 
   if (scanning) {
@@ -172,23 +194,26 @@ el.form.addEventListener('submit', async (e) => {
   }
   if (!engineOnline) {
     el.output.textContent =
-      `[${now}] Comando preparado\n  ${line}\n\n` +
-      `O motor de execução (draco-engine) não está no ar.\n` +
-      `Inicie com:  python3 draco-engine.py\n` +
-      `Para SYN scan (-sS):  sudo python3 draco-engine.py`;
+      `O motor de execução (draco-engine) não está no ar.\n\n` +
+      `Inicie com:  python3 draco-engine.py   (pede a senha do sudo)\n` +
+      `Sem elevar:  python3 draco-engine.py --no-root`;
     return;
   }
 
   scanning = true;
   abort = new AbortController();
   runBtn.textContent = 'Interromper';
-  el.output.textContent = `[${now}] Iniciando varredura…\n\n`;
+  el.output.textContent = `[${now}] Iniciando pipeline…\n\n`;
 
   try {
     const res = await fetch('/api/scan', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ target: el.target.value, mode: currentMode() }),
+      body: JSON.stringify({
+        target: currentTarget(),
+        profile: currentProfile(),
+        pace: currentPace(),
+      }),
       signal: abort.signal,
     });
     if (!res.ok) {

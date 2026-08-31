@@ -22,30 +22,39 @@ Usa ES modules — não abre por `file://`.
 |---|---|
 | `index.html` | Início + ferramenta + Documentação, em uma página |
 | `css/style.css` | Tema e componentes (dark, Inter + JetBrains Mono) |
-| `js/app.js` | Roteamento por hash, construtor de comando e streaming da saída |
+| `js/app.js` | Roteamento por hash, render do plano e streaming da saída |
 | `js/particles.js` | Fundo ambiente: partículas em movimento que reagem a mouse, clique e digitação |
-| `draco-engine.py` | Backend (stdlib): serve os estáticos e roda o `nmap` em `/api/scan`, transmitindo a saída |
+| `draco-engine.py` | Backend (stdlib): serve os estáticos e orquestra o pipeline de recon em `/api/scan` |
 
 ### Rotas
 
-`#/` início · `#/ferramentas` (rola até a seção) · `#/scanner` Draco Conhecendo
-o Alvo · `#/docs` documentação
+`#/` início · `#/ferramentas` (rola até a seção) · `#/scanner` Draco Scanner ·
+`#/docs` documentação
 
-## Ferramenta atual: Draco Conhecendo o Alvo
+## Ferramenta atual: Draco Scanner
 
-Camada visual sobre o `nmap`, em tela cheia (sem rolagem de página — só a saída
-e os campos rolam). Dois campos: **alvo** e **modo de varredura**:
+Tela cheia (sem rolagem de página — só a saída e os campos rolam). Campos:
+**alvo**, **perfil** (furtivo/agressivo) e **ritmo** (rápido/lento). O painel
+mostra o **plano** (`GET /api/plan`) e, ao executar, faz `POST /api/scan` e
+transmite a saída do pipeline em blocos numerados. Alvo padrão: `scanme.nmap.org`.
 
-| Modo | Flags |
-|---|---|
-| Furtivo · rápido | `-sS -Pn -T3` |
-| Furtivo · lento | `-sS -Pn -T1` |
-| Agressivo · rápido | `-A -T4` |
-| Agressivo · lento | `-A -T2` |
+O motor não roda um comando só — encadeia etapas, usando o resultado de cada uma
+para decidir a próxima:
 
-Monta e valida o comando ao vivo; a saída aparece ao lado. Alvo padrão:
-`scanme.nmap.org`.
+1. Resolução e DNS (`host`/PTR; `dnsrecon` std+axfr no agressivo)
+2. Descoberta de host (`-Pn` furtivo · `-sn` com sondas no agressivo)
+3. Portas TCP (SYN; top 1000/2000 furtivo · `-p-` agressivo)
+4. Serviços/versões/SO/NSE nas portas abertas (`-sV -sC`; `+ -O --traceroute vuln` no agressivo)
+5. UDP top 100/150 (agressivo)
+6. Enumeração por serviço — dispara a ferramenta certa por serviço: HTTP →
+   whatweb/wafw00f/nikto/gobuster/NSE `http-*`; TLS → `ssl-enum-ciphers`/sslscan;
+   SMB → nxc/enum4linux/NSE; e NSE dedicado p/ DNS, SNMP, FTP, SSH, SMTP, RDP, BD
+7. Vulnerabilidades — `nmap --script vulners` + `searchsploit` nos banners (agressivo)
+8. Resumo — tabela de portas/serviços e tempo total
 
-Executa via `draco-engine.py`: o painel faz `POST /api/scan`, o motor roda o
-`nmap` e transmite a saída linha a linha. Sem root, `-sS` cai para `-sT` (connect
-scan). "Draco Engenharia Social" e "Relatórios" são espaços reservados.
+**Perfil** controla o quanto aparece (SYN, sem SO/UDP, só scripts seguros,
+fragmentação no ritmo lento). **Ritmo** controla velocidade × profundidade
+(`-T`, `--min-rate`/`--max-retries`, tamanho da wordlist, limites de tempo por
+etapa). Ferramentas ausentes no PATH viram etapas `(pulado)`.
+
+"Draco Engenharia Social" e "Relatórios" são espaços reservados.

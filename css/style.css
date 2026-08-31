@@ -691,27 +691,38 @@ body.view-scanner {
   outline-offset: 2px;
 }
 
-/* comando: sempre completo, sem rolagem */
+/* plano de varredura: lista das etapas do pipeline */
 
-.command {
-  display: block;
-  min-height: 58px;
-  padding: 18px 20px;
+.plan {
+  margin: 0;
+  padding: 14px 16px 14px 34px;
   background: var(--inset);
   border: 1px solid var(--border-strong);
   border-left: 3px solid var(--accent);
   border-radius: 12px;
-  font-size: 15.5px;
-  line-height: 1.6;
-  color: var(--accent);
-  white-space: normal;
-  word-break: break-word;
-  overflow-wrap: anywhere;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  font-size: 13px;
+  color: var(--text-secondary);
 }
 
-.command::before {
-  content: "$ ";
+.plan li {
+  line-height: 1.45;
+}
+
+.plan li b {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.plan li span {
   color: var(--text-tertiary);
+}
+
+.plan code {
+  color: var(--accent);
+  font-size: 11.5px;
 }
 
 .scan-run .btn-primary {

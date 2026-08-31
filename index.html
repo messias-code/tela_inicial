@@ -73,8 +73,8 @@
               <div class="tool-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24" width="20" height="20"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="m16 16 4.5 4.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
               </div>
-              <h3>Draco Conhecendo o Alvo</h3>
-              <p>Reconhecimento de hosts, portas e serviços sobre o <code>nmap</code>. Perfis prontos, comando visível e resultados organizados.</p>
+              <h3>Draco Scanner</h3>
+              <p>Reconhecimento completo de um alvo: <code>nmap</code> orquestrado com whatweb, nikto, gobuster, sslscan, nxc e NSE — em pipeline, respeitando o perfil escolhido.</p>
               <span class="tool-link">Abrir ferramenta<span aria-hidden="true"> →</span></span>
             </a>
 
@@ -96,8 +96,8 @@
       <div class="scan-screen">
         <div class="scan-top">
           <a class="back-link" href="#/ferramentas">← Ferramentas</a>
-          <h1>Draco Conhecendo o Alvo</h1>
-          <p class="scan-sub">Reconhecimento de hosts, portas e serviços sobre o <code>nmap</code>.</p>
+          <h1>Draco Scanner</h1>
+          <p class="scan-sub">Pipeline de reconhecimento: <code>nmap</code> + ferramentas complementares, encadeadas de forma inteligente conforme o perfil e o ritmo.</p>
           <div class="notice" role="status">
             <strong>Verificando o motor…</strong> — a execução roda no backend <code>draco-engine</code> (<code>python3 draco-engine.py</code>).
           </div>
@@ -146,16 +146,17 @@
               </div>
               <p class="field-hint" id="scan-mode-hint"></p>
             </fieldset>
+
+            <div class="field">
+              <span class="field-label">Plano de varredura</span>
+              <ol id="scan-plan" class="plan"><li>carregando…</li></ol>
+            </div>
             </div>
 
             <div class="scan-run">
-              <div class="field">
-                <span class="field-label">Comando a executar</span>
-                <code id="scan-command" class="command">nmap</code>
-              </div>
               <div class="scan-run-actions">
                 <button type="submit" class="btn btn-primary">Executar varredura</button>
-                <button type="button" id="scan-copy" class="btn btn-ghost btn-sm">Copiar comando</button>
+                <button type="button" id="scan-copy" class="btn btn-ghost btn-sm">Copiar plano</button>
               </div>
             </div>
           </form>
@@ -166,9 +167,9 @@
               <details class="explainer">
                 <summary>Como ler</summary>
                 <ul>
-                  <li><strong>open</strong> — há um serviço aceitando conexões na porta.</li>
-                  <li><strong>closed</strong> — o host respondeu, mas nada escuta na porta.</li>
-                  <li><strong>filtered</strong> — um firewall bloqueou a sonda; estado indeterminado.</li>
+                  <li>A saída vem em blocos numerados (<strong>═══ N · etapa</strong>), na ordem do plano.</li>
+                  <li><strong>open</strong> — serviço aceitando conexões · <strong>filtered</strong> — firewall bloqueou a sonda · <strong>closed</strong> — nada escuta.</li>
+                  <li>Etapas cujo binário não está instalado aparecem como <strong>(pulado)</strong>; etapas longas são cortadas no limite de tempo.</li>
                 </ul>
               </details>
             </div>
@@ -190,8 +191,9 @@
         <div class="docs-layout">
           <nav class="docs-nav" aria-label="Nesta página">
             <a href="#doc-intro">Introdução</a>
-            <a href="#doc-scanner">Conhecendo o Alvo</a>
-            <a href="#doc-modos">Modos de varredura</a>
+            <a href="#doc-scanner">Draco Scanner</a>
+            <a href="#doc-modos">Perfis e ritmos</a>
+            <a href="#doc-pipeline">O pipeline</a>
             <a href="#doc-resultados">Interpretando resultados</a>
             <a href="#doc-uso">Uso autorizado</a>
           </nav>
@@ -204,34 +206,61 @@
               dos panos — você informa o alvo e o objetivo, sem precisar decorar
               a sintaxe da linha de comando. Cada ferramenta traz as próprias
               instruções na tela. A primeira disponível é o
-              <strong>Draco Conhecendo o Alvo</strong>.
+              <strong>Draco Scanner</strong>.
             </p>
 
-            <h2 id="doc-scanner">Draco Conhecendo o Alvo</h2>
-            <p>Camada visual sobre o <code>nmap</code>. São dois campos:</p>
+            <h2 id="doc-scanner">Draco Scanner</h2>
+            <p>
+              Orquestra o <code>nmap</code> junto de ferramentas complementares
+              (whatweb, nikto, gobuster, sslscan, wafw00f, nxc, enum4linux,
+              dnsrecon, snmp-check, searchsploit) num <strong>pipeline</strong>:
+              cada etapa usa o resultado da anterior para decidir o que rodar em
+              seguida — o mesmo raciocínio de um analista sênior fazendo recon.
+            </p>
             <ol>
-              <li><strong>Alvo</strong> — domínio, IP ou faixa CIDR (ex.: <code>10.0.0.0/24</code>). O padrão é <code>scanme.nmap.org</code>, alvo de teste liberado pelo projeto nmap.</li>
-              <li><strong>Modo de varredura</strong> — furtivo ou agressivo, cada um em ritmo rápido ou lento (ver abaixo).</li>
+              <li><strong>Alvo</strong> — domínio ou IP. Padrão <code>scanme.nmap.org</code>, alvo de teste liberado pelo projeto nmap.</li>
+              <li><strong>Perfil</strong> — furtivo ou agressivo. <strong>Ritmo</strong> — rápido ou lento.</li>
             </ol>
-            <p>O comando é montado em tempo real e pode ser copiado; ao executar, a saída aparece ao lado.</p>
-            <p class="callout">
-              O motor de execução (backend) ainda não está conectado nesta
-              versão. A interface já monta e valida o comando; a execução real
-              entra em operação quando o serviço <code>draco-engine</code> estiver disponível.
+            <p>
+              O <strong>plano</strong> à esquerda mostra as etapas que vão rodar
+              para a combinação escolhida; a saída aparece ao lado, em blocos
+              numerados, conforme cada ferramenta executa. Roda no backend
+              <code>draco-engine</code> (<code>python3 draco-engine.py</code>).
             </p>
 
-            <h2 id="doc-modos">Modos de varredura</h2>
+            <h2 id="doc-modos">Perfis e ritmos</h2>
+            <p><strong>O perfil decide o quanto a varredura aparece:</strong></p>
             <table class="docs-table">
               <thead>
-                <tr><th>Modo</th><th>Flags</th><th>Característica</th></tr>
+                <tr><th>Perfil</th><th>O que faz</th></tr>
               </thead>
               <tbody>
-                <tr><td>Furtivo · rápido</td><td><code>-sS -Pn -T3</code></td><td>SYN scan sem descoberta prévia, ritmo moderado. Equilíbrio entre discrição e tempo. Requer root.</td></tr>
-                <tr><td>Furtivo · lento</td><td><code>-sS -Pn -T1</code></td><td>Sondas bem espaçadas para diluir o tráfego e passar sob limites de taxa e IDS por rajada. Demorado.</td></tr>
-                <tr><td>Agressivo · rápido</td><td><code>-A -T4</code></td><td>Versão, SO, scripts padrão e traceroute em ritmo rápido. Completo, mas ruidoso e fácil de detectar.</td></tr>
-                <tr><td>Agressivo · lento</td><td><code>-A -T2</code></td><td>Mesma profundidade em ritmo contido — mais confiável em redes filtradas ou instáveis.</td></tr>
+                <tr><td>Furtivo</td><td>SYN scan, <code>-Pn</code> (sem sondas de descoberta), versão leve, só scripts NSE seguros. Sem detecção de SO, sem UDP, sem nikto/gobuster. No ritmo lento, ainda fragmenta pacotes (<code>-f</code>) e espaça as sondas.</td></tr>
+                <tr><td>Agressivo</td><td>Varredura completa (<code>-p-</code>), detecção de SO e traceroute, UDP nas top portas, NSE <code>discovery</code>+<code>vuln</code>, e toda a cadeia externa (nikto, gobuster, sslscan, wafw00f, nxc, enum4linux, vulners, searchsploit). Ruidoso e completo.</td></tr>
               </tbody>
             </table>
+            <p><strong>O ritmo decide velocidade × profundidade:</strong></p>
+            <table class="docs-table">
+              <thead>
+                <tr><th>Ritmo</th><th>O que muda</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>Rápido</td><td>Timing <code>-T3</code>/<code>-T4</code>, <code>--min-rate</code> alto, wordlist curta (<code>dirb/common.txt</code>), limites de tempo menores por etapa.</td></tr>
+                <tr><td>Lento</td><td>Timing <code>-T1</code>/<code>-T2</code>, mais retransmissões, wordlist grande (<code>dirb/big.txt</code>), limites de tempo generosos. Mais confiável em redes filtradas ou instáveis.</td></tr>
+              </tbody>
+            </table>
+
+            <h2 id="doc-pipeline">O pipeline</h2>
+            <ol>
+              <li><strong>Resolução e DNS</strong> — <code>host</code>/PTR; no agressivo, <code>dnsrecon</code> (enum padrão + tentativa de transferência de zona).</li>
+              <li><strong>Descoberta de host</strong> — furtivo assume ativo; agressivo sonda ICMP + TCP.</li>
+              <li><strong>Portas TCP</strong> — SYN scan; top 1000/2000 (furtivo) ou <code>-p-</code> (agressivo).</li>
+              <li><strong>Serviços, versões, SO e NSE</strong> — <code>-sV</code> + <code>-sC</code> nas portas abertas; agressivo soma <code>-O</code>, <code>--traceroute</code> e <code>vuln</code>.</li>
+              <li><strong>UDP</strong> (agressivo) — top 100/150 portas.</li>
+              <li><strong>Enumeração por serviço</strong> — dispara a ferramenta certa para cada serviço achado: HTTP → whatweb/nikto/gobuster/NSE http-*; TLS → ssl-enum-ciphers/sslscan; SMB → nxc/enum4linux/NSE; e NSE dedicado para DNS, SNMP, FTP, SSH, SMTP, RDP e bancos.</li>
+              <li><strong>Vulnerabilidades</strong> (agressivo) — <code>nmap --script vulners</code> + <code>searchsploit</code> nos banners.</li>
+              <li><strong>Resumo</strong> — tabela de portas/serviços e tempo total.</li>
+            </ol>
 
             <h2 id="doc-resultados">Interpretando resultados</h2>
             <p>Cada porta é reportada com um estado:</p>
@@ -241,9 +270,10 @@
               <li><strong>filtered</strong> — um firewall bloqueou a sonda; o nmap não conseguiu determinar o estado.</li>
             </ul>
             <p>
-              No modo agressivo, a coluna de versão traz o software e a build
-              detectados — ponto de partida para pesquisar vulnerabilidades
-              conhecidas (CVEs).
+              A coluna de versão (perfil agressivo, <code>--version-all</code>) traz
+              o software e a build detectados — ponto de partida para os blocos de
+              <code>vulners</code> e <code>searchsploit</code>, que já mapeiam CVEs
+              e exploits conhecidos para aquelas versões.
             </p>
 
             <h2 id="doc-uso">Uso autorizado</h2>
